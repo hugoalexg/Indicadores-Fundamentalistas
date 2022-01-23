@@ -11,8 +11,6 @@ import xlsxwriter
 import Fundamento as fd
 
 Tickers = [] #lista de tickers das ações que serão pesquisadas
-Links_princ = {} #dicionario dos links principais de cada ação na pagina investing.com
-
 Objetos_fundamentos = [] #lista de objetos da classe 'Fundamento'
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -90,37 +88,21 @@ def gerar_indicadores(): #função que gera a planilha no excel com os indicador
 def baixar_dados(): #funçao que obtem os dados necessarios para gerar a planilha de indicadores
     
     if len(Tickers) > 0:
-        #buscando no site da investing.com os links principais para todas as ações da lista
-        for ticker in Tickers:
-            url = 'https://br.investing.com/search/?q=' + ticker
-            logging.debug('Procurando links de ' + ticker + '...')
-            try:
-                request = Request(url , headers={'User-Agent': 'Mozilla/5.0'})
-                webpage = urlopen(request).read()
-                soup = bs4.BeautifulSoup(webpage, 'html.parser')
-
-                lista = soup.find_all('a', href=True)
-
-                for elemento in lista:
-                    if (ticker in str(elemento)) and ('Bovespa' in str(elemento) ):
-                        Links_princ[ticker] = 'https://br.investing.com' + elemento['href'] 
-                        break        
-                           
-            except Exception as exc:
-                logging.debug('ERRO: ' + str(exc))
-                messagebox.showinfo('Aviso','ERRO: ' + str(exc))
-
-        #instanciando objetos da classe 'Fundamento', sendo um para cada açao VALIDA da lista Tickers
+        #instanciando objetos da classe 'Fundamento'
         for tick in Tickers:
-            if tick in list(Links_princ.keys()):
-                Objetos_fundamentos.append(fd.Fundamento(tick,Links_princ[tick]))
+            Objetos_fundamentos.append(fd.Fundamento(tick))
 
         #atualizando as informaçoes para cada ação      
         for item in Objetos_fundamentos:
-            item.atualizar_preco_vm()
-            item.atualizar_balanco()
-            item.atualizar_DRE()
-            item.atualizar_dividendos()
+
+            item.link_principal()
+            
+            #vai buscar dados na web apenas se a ação for válida, e tiver link disponivel na investing.com
+            if item.tem_link():
+                item.atualizar_preco_vm()
+                item.atualizar_balanco()
+                item.atualizar_DRE()
+                item.atualizar_dividendos()
 
         messagebox.showinfo('Aviso','Todos os dados foram baixados da Web!')
         
@@ -142,7 +124,6 @@ def adicionar(): #função que adiciona novo ticker a lista
 #-------------------------------------------------------------------------------------------------------------------------
 def limpar(): #função que limpa a lista de tickers
     Tickers.clear()
-    Links_princ.clear()
     Objetos_fundamentos.clear()
     listaTickers.delete(0,END)
 

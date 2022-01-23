@@ -8,10 +8,11 @@ import logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
 class Fundamento:
-    def __init__(self, codigo, link):
+    def __init__(self, codigo):
         self.ticker = codigo
-        self.link = link #link principal Investing.com
+        self.link = ''#link principal Investing.com
         self.periodo = ''
+        self.temLink = False
         #balanço (mais recente)
         self.ativoCirculante = 0.0 #x1000
         self.ativoTotal = 0.0 #x1000
@@ -26,7 +27,33 @@ class Fundamento:
         self.precoAtual = 0.0
         self.valorMercado = 0.0 #x1000
         self.dividendos12meses = 0.0
-    
+
+   
+    def link_principal(self):
+        #buscando no site da investing.com os links principais para a ação
+        url = 'https://br.investing.com/search/?q=' + self.ticker
+        logging.debug('Procurando links de ' + self.ticker + '...')
+        try:
+            request = Request(url , headers={'User-Agent': 'Mozilla/5.0'})
+            webpage = urlopen(request).read()
+            soup = bs4.BeautifulSoup(webpage, 'html.parser')
+
+            lista = soup.find_all('a', href=True)
+
+            for elemento in lista:
+                if (self.ticker in str(elemento)) and ('Bovespa' in str(elemento) ):
+                    self.link = 'https://br.investing.com' + elemento['href']
+                    self.temLink = True  
+                    break    
+
+        except Exception as exc:
+            logging.debug('ERRO: ' + str(exc))
+            messagebox.showinfo('Aviso','ERRO: ' + str(exc))
+
+    def tem_link(self):
+        #retorna se foi achando um link para tal açao no investing.com 
+        return self.temLink 
+
     def atualizar_preco_vm(self): 
         #Pegar preço atual e valor de mercado(Statusinvest)
         url = 'https://statusinvest.com.br/acoes/' + self.ticker
@@ -100,7 +127,7 @@ class Fundamento:
         url = self.link + '-income-statement'
         logging.debug('Atualizando dados de DRE de ' + self.ticker)
         try:
-            req = Request(url , headers={'User-Agent': 'Mozilla/5.0'})
+            req = Request(url, headers={'User-Agent': 'Mozilla/5.0'})
             webpage = urlopen(req).read()
             soup = bs4.BeautifulSoup(webpage, 'html.parser')
 
